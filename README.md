@@ -1,4 +1,4 @@
-# Nexus Smart Backup System (Universal Edition)
+# Nexus Smart Backup
 
 **The Ultimate Standalone Backup Tool for Any Project**
 

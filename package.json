@@ -1,17 +1,18 @@
 {
-  "name": "nexus-prime-backup-system",
-  "version": "1.1.0",
+  "name": "nexus-smart-backup",
+  "version": "1.1.1",
   "description": "",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
     "build": "electron-builder --win portable",
+    "publish-release": "electron-builder --win portable -p always",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "repository": "https://github.com/mmhassanin/Nexus-Prime-backup-system.git",
+  "repository": "https://github.com/mmhassanin/Nexus-Smart-Backup.git",
   "build": {
     "appId": "com.nexus.smartbackup",
     "productName": "Nexus Smart Backup",
@@ -25,7 +26,7 @@
       {
         "provider": "github",
         "owner": "mmhassanin",
-        "repo": "Nexus-Prime-backup-system"
+        "repo": "Nexus-Smart-Backup"
       }
     ]
   },
