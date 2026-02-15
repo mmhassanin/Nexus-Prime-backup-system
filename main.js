@@ -1,11 +1,12 @@
 const { app, BrowserWindow, Tray, Menu, ipcMain, dialog, shell, Notification, nativeImage } = require('electron');
 const { autoUpdater } = require('electron-updater');
+const log = require('electron-log');
 const path = require('path');
 const fs = require('fs-extra');
 const Store = require('electron-store');
 
 // AutoUpdater Logging
-autoUpdater.logger = require('electron-log');
+autoUpdater.logger = log;
 autoUpdater.logger.transports.file.level = 'info';
 autoUpdater.autoDownload = false; // User must explicitly download
 
@@ -33,7 +34,7 @@ function sendLog(message) {
   if (settingsWindow && !settingsWindow.isDestroyed()) {
     settingsWindow.webContents.send('log-message', `[${new Date().toLocaleTimeString()}] ${message}`);
   }
-  console.log(message);
+  log.info(message);
 }
 
 // Helper to update status
@@ -111,7 +112,7 @@ async function getDirSize(dir) {
       }
     }
   } catch (err) {
-    console.error('Error calculating size:', err);
+    log.error('Error calculating size:', err);
   }
   return size;
 }
@@ -200,7 +201,7 @@ async function performBackup() {
 
   } catch (err) {
     sendLog(`Backup failed: ${err.message}`);
-    console.error(err);
+    log.error(err);
   } finally {
     isBackingUp = false;
     // status is only 'Running' if the loop is active
@@ -286,11 +287,30 @@ ipcMain.on('minimize-window', () => settingsWindow.hide());
 // --- Auto Updater IPC & Events ---
 
 ipcMain.on('check-for-update', () => {
+  // Ensure we are in a "packaged" environment before checking for updates
   if (!app.isPackaged) {
-    sendLog('AutoUpdater: App is not packaged. Skipping update check.');
+    sendLog('AutoUpdater: App is not packaged (Dev Mode). Skipping update check.');
     return;
   }
-  autoUpdater.checkForUpdates();
+
+  // NUCLEAR FIX: Force the update configuration to bypass app-update.yml
+  try {
+    autoUpdater.setFeedURL({
+      provider: 'github',
+      owner: 'mmhassanin',
+      repo: 'Nexus-Smart-Backup'
+    });
+
+    autoUpdater.checkForUpdates();
+  } catch (error) {
+    log.error('AutoUpdater Crash Prevented:', error);
+    if (settingsWindow && !settingsWindow.isDestroyed()) {
+      settingsWindow.webContents.send('update-status', {
+        status: 'error',
+        error: 'Update check failed. Check your network.'
+      });
+    }
+  }
 });
 
 ipcMain.on('download-update', () => {
@@ -328,6 +348,13 @@ autoUpdater.on('update-downloaded', (info) => {
 
 
 app.whenReady().then(() => {
+  if (Notification.isSupported()) {
+    new Notification({
+      title: 'Nexus Smart Backup',
+      body: 'System is now active and monitoring your files.'
+    }).show();
+  }
+
   try {
     store = new Store({
       defaults: {
