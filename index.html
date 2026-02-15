@@ -1,205 +1,152 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Nexus Smart Backup</title>
-  <style>
-    :root {
-      --bg-color: #1a1a1a;
-      --card-bg: #2d2d2d;
-      --text-color: #e0e0e0;
-      --accent-color: #00d4ff;
-      --danger-color: #ff4d4d;
-      --success-color: #00ff88;
-    }
-    body {
-      margin: 0;
-      padding: 0;
-      font-family: 'Segoe UI', sans-serif;
-      background-color: var(--bg-color);
-      color: var(--text-color);
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-      overflow: hidden;
-    }
-    .header {
-      background: var(--card-bg);
-      padding: 15px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      -webkit-app-region: drag;
-      border-bottom: 1px solid #333;
-    }
-    .header h1 {
-      margin: 0;
-      font-size: 18px;
-    }
-    .close-btn {
-      -webkit-app-region: no-drag;
-      cursor: pointer;
-      background: none;
-      border: none;
-      color: #888;
-      font-size: 20px;
-    }
-    .container {
-      padding: 20px;
-      flex: 1;
-      overflow-y: auto;
-    }
-    .form-group {
-      margin-bottom: 15px;
-    }
-    label {
-      display: block;
-      margin-bottom: 5px;
-      font-weight: 500;
-      color: #aaa;
-    }
-    input[type="text"], input[type="number"] {
-      width: 100%;
-      padding: 8px;
-      background: #333;
-      border: 1px solid #444;
-      color: white;
-      border-radius: 4px;
-      box-sizing: border-box;
-    }
-    .file-input {
-      display: flex;
-      gap: 10px;
-    }
-    button {
-      padding: 8px 15px;
-      background: var(--card-bg);
-      border: 1px solid #444;
-      color: white;
-      cursor: pointer;
-      border-radius: 4px;
-      transition: background 0.2s;
-    }
-    button:hover {
-      background: #444;
-    }
-    button.primary {
-      background: var(--accent-color);
-      color: #111;
-      border: none;
-      font-weight: bold;
-    }
-    button.danger {
-      background: var(--danger-color);
-      border: none;
-    }
-    .actions {
-      display: flex;
-      gap: 10px;
-      margin-top: 20px;
-      padding-top: 20px;
-      border-top: 1px solid #333;
-    }
-    .status-bar {
-      margin-bottom: 20px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .status {
-      font-weight: bold;
-      padding: 4px 8px;
-      border-radius: 4px;
-      font-size: 12px;
-    }
-    .status.running {
-      background: rgba(0, 255, 136, 0.2);
-      color: var(--success-color);
-    }
-    .status.stopped {
-      background: rgba(255, 77, 77, 0.2);
-      color: var(--danger-color);
-    }
-    #logs {
-      width: 100%;
-      height: 150px;
-      background: #111;
-      border: 1px solid #333;
-      color: #aaa;
-      font-family: monospace;
-      padding: 10px;
-      resize: none;
-      box-sizing: border-box;
-      margin-top: 20px;
-    }
-  </style>
+  <link rel="stylesheet" href="styles.css">
 </head>
+
 <body>
+
   <div class="header">
-    <h1>Settings Dashboard</h1>
-    <button class="close-btn" id="closeBtn">×</button>
+    <div class="title-bar">
+      <h1><span style="color: var(--accent-color);">Nexus</span> Backup</h1>
+      <button class="close-btn" id="closeBtn" title="Minimize to Tray">&times;</button>
+    </div>
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
+      <button class="tab-btn" data-tab="config">Configuration</button>
+      <button class="tab-btn" data-tab="updates">Updates</button>
+    </div>
   </div>
-  
+
   <div class="container">
-    <div class="status-bar">
-      <span>System Status:</span>
-      <span id="statusIndicator" class="status stopped">STOPPED</span>
-    </div>
 
-    <div class="form-group">
-      <label>Source Directory</label>
-      <div class="file-input">
-        <input type="text" id="source" readonly>
-        <button id="browseSource">Browse</button>
+    <!-- Tab 1: Dashboard -->
+    <div id="dashboard" class="tab-content active">
+      <div class="status-card">
+        <div class="status-info">
+          <span class="status-label">System Status</span>
+          <div class="status-value stopped" id="statusValue">
+            <div class="status-indicator"></div>
+            <span id="statusText">STOPPED</span>
+          </div>
+        </div>
+        <div>
+          <!-- Placeholder for maybe last backup time or next backup time -->
+        </div>
+      </div>
+
+      <div class="control-panel">
+        <button id="startBtn" class="primary">
+          Start Service
+        </button>
+        <button id="stopBtn" class="danger">
+          Stop Service
+        </button>
+        <button id="forceBtn">
+          Force Backup Now
+        </button>
+      </div>
+
+      <div class="form-group">
+        <label>Live Logs</label>
+        <textarea id="logs" readonly placeholder="Waiting for logs..."></textarea>
       </div>
     </div>
 
-    <div class="form-group">
-      <label>Destination Root</label>
-      <div class="file-input">
-        <input type="text" id="destination" readonly>
-        <button id="browseDest">Browse</button>
+    <!-- Tab 2: Configuration -->
+    <div id="config" class="tab-content">
+
+      <div class="form-group">
+        <label>Source Directory</label>
+        <div class="input-with-btn">
+          <input type="text" id="source" readonly placeholder="Select source folder...">
+          <button id="browseSource">Browse</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Destination Root</label>
+        <div class="input-with-btn">
+          <input type="text" id="destination" readonly placeholder="Select destination folder...">
+          <button id="browseDest">Browse</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Excluded Folders (Type & Press Enter)</label>
+        <div class="tag-container" id="excludesContainer">
+          <!-- Tags will be injected here -->
+          <input type="text" class="tag-input" id="excludesInput" placeholder="Add folder name (e.g. node_modules)...">
+        </div>
+        <!-- Hidden input to store value for easy access -->
+        <input type="hidden" id="excludesHidden">
+      </div>
+
+      <div class="settings-grid">
+        <div class="form-group">
+          <label>Interval (mins)</label>
+          <input type="number" id="interval" min="1" value="60">
+        </div>
+        <div class="form-group">
+          <label>Max Backups</label>
+          <input type="number" id="maxBackups" min="1" value="10">
+        </div>
+        <div class="form-group">
+          <label>Smart Streak Limit</label>
+          <input type="number" id="smartStreak" min="1" value="3">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="checkbox-wrapper">
+          <input type="checkbox" id="autoStart">
+          <span>Run on System Startup</span>
+        </label>
+      </div>
+
+      <button id="saveBtn" class="primary full-width">Save Configuration</button>
+    </div>
+
+    <!-- Tab 3: Updates -->
+    <div id="updates" class="tab-content">
+      <div class="status-card" style="flex-direction: column; align-items: flex-start; gap: 10px;">
+        <span class="status-label">Current Version</span>
+        <div class="status-value" style="font-size: 18px;">
+          <span id="appVersion">v1.1.0</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Update Status</label>
+        <div id="updateStatusText"
+          style="padding: 10px; background: #0a0a0a; border: 1px solid var(--border-color); border-radius: 6px; min-height: 40px; color: var(--text-muted);">
+          Ready to check for updates.
+        </div>
+      </div>
+
+      <!-- Progress Bar (Hidden by default) -->
+      <div id="updateProgressContainer" class="form-group" style="display: none;">
+        <label>Download Progress</label>
+        <div style="width: 100%; background: var(--input-bg); height: 10px; border-radius: 5px; overflow: hidden;">
+          <div id="updateProgressBar"
+            style="width: 0%; height: 100%; background: var(--accent-color); transition: width 0.2s;"></div>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 10px;">
+        <button id="checkUpdatesBtn" class="primary">Check for Updates</button>
+        <button id="downloadUpdateBtn" style="display: none;">Download Update</button>
+        <button id="restartBtn" class="primary" style="display: none;">Restart & Install</button>
       </div>
     </div>
 
-    <div class="form-group">
-      <label>Excluded Folders (comma separated)</label>
-      <input type="text" id="excludes" placeholder="node_modules, .git, temp">
-    </div>
-
-    <div style="display: flex; gap: 20px;">
-      <div class="form-group" style="flex: 1;">
-        <label>Interval (mins)</label>
-        <input type="number" id="interval" min="1" value="60">
-      </div>
-      <div class="form-group" style="flex: 1;">
-        <label>Max Backups</label>
-        <input type="number" id="maxBackups" min="1" value="10">
-      </div>
-      <div class="form-group" style="flex: 1;">
-        <label>Smart Streak Limit</label>
-        <input type="number" id="smartStreak" min="1" value="3">
-      </div>
-    </div>
-
-    <div class="form-group">
-      <label style="display: flex; align-items: center; gap: 10px;">
-        <input type="checkbox" id="autoStart"> Run on Startup
-      </label>
-    </div>
-
-    <button id="saveBtn" class="primary" style="width: 100%;">Save Settings</button>
-
-    <div class="actions">
-      <button id="startBtn" class="primary">Start Loop</button>
-      <button id="stopBtn">Stop Loop</button>
-      <button id="forceBtn">Force Backup Now</button>
-    </div>
-
-    <textarea id="logs" readonly placeholder="System logs..."></textarea>
   </div>
 
   <script src="renderer.js"></script>
 </body>
+
 </html>

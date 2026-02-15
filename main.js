@@ -1,20 +1,25 @@
-const { app, BrowserWindow, Tray, Menu, ipcMain, dialog, shell, Notification } = require('electron');
+const { app, BrowserWindow, Tray, Menu, ipcMain, dialog, shell, Notification, nativeImage } = require('electron');
+const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const fs = require('fs-extra');
 const Store = require('electron-store');
 
-// Initialize store with defaults
-const store = new Store({
-  defaults: {
-    source: '',
-    destination: '',
-    excludes: 'node_modules, .git, temp',
-    interval: 60, // minutes
-    maxBackups: 10,
-    smartStreak: 3,
-    autoStart: false
-  }
+// AutoUpdater Logging
+autoUpdater.logger = require('electron-log');
+autoUpdater.logger.transports.file.level = 'info';
+autoUpdater.autoDownload = false; // User must explicitly download
+
+process.on('uncaughtException', (err) => {
+  dialog.showErrorBox('Fatal Error (Uncaught)', err.stack || err.toString());
+  app.quit();
 });
+
+process.on('unhandledRejection', (reason) => {
+  dialog.showErrorBox('Fatal Error (Unhandled Promise)', String(reason));
+  app.quit();
+});
+
+let store;
 
 let settingsWindow = null;
 let tray = null;
@@ -64,20 +69,18 @@ function createSettingsWindow() {
 }
 
 function createTray() {
-  // Use a default icon or placeholder. In production, check for icon file.
-  const iconPath = path.join(__dirname, 'icon.png'); 
-  // If no icon, tray might fail or show empty. For boilerplate, we'll try to use a simple approach or log warning if missing.
-  // Electron requires a valid image. 
-  
-  tray = new Tray(iconPath);
-  
+  const trayIcon = nativeImage.createEmpty();
+  tray = new Tray(trayIcon);
+  tray.setTitle(" Backup"); // Add a text title so it's visible in the tray even without an icon
+
   const contextMenu = Menu.buildFromTemplate([
     { label: 'Settings', click: () => settingsWindow.show() },
     { type: 'separator' },
-    { label: 'Exit', click: () => {
+    {
+      label: 'Exit', click: () => {
         app.isQuiting = true;
         app.quit();
-      } 
+      }
     }
   ]);
 
@@ -97,18 +100,18 @@ function createTray() {
 async function getDirSize(dir) {
   let size = 0;
   try {
-      const files = await fs.readdir(dir);
-      for (const file of files) {
-        const filePath = path.join(dir, file);
-        const stats = await fs.stat(filePath);
-        if (stats.isDirectory()) {
-          size += await getDirSize(filePath);
-        } else {
-          size += stats.size;
-        }
+    const files = await fs.readdir(dir);
+    for (const file of files) {
+      const filePath = path.join(dir, file);
+      const stats = await fs.stat(filePath);
+      if (stats.isDirectory()) {
+        size += await getDirSize(filePath);
+      } else {
+        size += stats.size;
       }
+    }
   } catch (err) {
-      console.error('Error calculating size:', err);
+    console.error('Error calculating size:', err);
   }
   return size;
 }
@@ -132,25 +135,41 @@ async function performBackup() {
     sendStatus(!!backupIntervalId);
     return;
   }
-  
+
   // Verify paths exist
   if (!fs.existsSync(source)) {
-      sendLog('Error: Source path does not exist.');
-      isBackingUp = false;
-      return;
+    sendLog('Error: Source path does not exist.');
+    isBackingUp = false;
+    return;
   }
 
   try {
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const backupFolderName = `backup-${timestamp}`;
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+    const timestamp = `${year}-${month}-${day}_${hours}-${minutes}-${seconds}`;
+    const backupFolderName = `Backup_${timestamp}`;
     const backupPath = path.join(destination, backupFolderName);
 
     // Copy with filter
     await fs.copy(source, backupPath, {
       filter: (src) => {
         const relative = path.relative(source, src);
-        if (!relative) return true; // root
-        return !excludes.some(exclude => relative.includes(exclude));
+        if (!relative) return true; // root folder of the source itself
+
+        // Split path into segments using the platform-specific separator
+        const segments = relative.split(path.sep);
+
+        // Check if ANY segment in the path exactly matches one of the excluded tags
+        // This prevents partial matches (e.g. excluding "temp" won't block "templates")
+        // but ensures deep exclusion (e.g. "node_modules" blocks it at any depth)
+        const isExcluded = segments.some(segment => excludes.includes(segment));
+
+        return !isExcluded;
       }
     });
 
@@ -166,7 +185,7 @@ async function performBackup() {
       if (consecutiveSameSizeCount >= smartStreak) {
         sendLog('Smart Check Triggered: Stopping auto-backups.');
         stopBackupLoop();
-        
+
         if (Notification.isSupported()) {
           new Notification({ title: 'Nexus Backup', body: 'Backup stopped due to inactivity (Smart Check).' }).show();
         }
@@ -192,8 +211,8 @@ async function pruneBackups(destDir, max) {
   try {
     const files = await fs.readdir(destDir);
     // Filter for backup folders and sort by creation time (name)
-    // Assuming backup-YYYY-MM-DD... format sort works chronologically
-    const backupFolders = files.filter(f => f.startsWith('backup-')).sort(); 
+    // Assuming Backup-YYYY-MM-DD... format sort works chronologically
+    const backupFolders = files.filter(f => f.startsWith('Backup_')).sort();
 
     if (backupFolders.length > max) {
       const toDelete = backupFolders.slice(0, backupFolders.length - max);
@@ -210,14 +229,14 @@ async function pruneBackups(destDir, max) {
 
 function startBackupLoop() {
   if (backupIntervalId) clearInterval(backupIntervalId);
-  
+
   const intervalMins = store.get('interval') || 60;
   sendLog(`Starting auto-backup. Interval: ${intervalMins} mins.`);
-  
+
   backupIntervalId = setInterval(() => {
     performBackup();
   }, intervalMins * 60 * 1000);
-  
+
   sendStatus(true);
 }
 
@@ -235,7 +254,14 @@ ipcMain.handle('get-settings', () => store.store);
 ipcMain.handle('save-settings', (event, settings) => {
   store.set(settings);
   sendLog('Settings saved.');
-  
+
+  if (Notification.isSupported()) {
+    new Notification({
+      title: 'Configuration Saved',
+      body: 'Your settings have been updated.'
+    }).show();
+  }
+
   // If running, restart loop with new interval logic
   if (backupIntervalId) {
     startBackupLoop();
@@ -247,7 +273,7 @@ ipcMain.handle('select-folder', async () => {
     properties: ['openDirectory']
   });
   if (!result.canceled && result.filePaths.length > 0) {
-      return result.filePaths[0];
+    return result.filePaths[0];
   }
   return null;
 });
@@ -257,12 +283,81 @@ ipcMain.on('stop-backup', () => stopBackupLoop());
 ipcMain.on('force-backup', () => performBackup());
 ipcMain.on('minimize-window', () => settingsWindow.hide());
 
-app.whenReady().then(() => {
-  createSettingsWindow();
-  createTray();
+// --- Auto Updater IPC & Events ---
 
-  if (store.get('autoStart')) {
-    startBackupLoop();
+ipcMain.on('check-for-update', () => {
+  if (!app.isPackaged) {
+    sendLog('AutoUpdater: App is not packaged. Skipping update check.');
+    return;
+  }
+  autoUpdater.checkForUpdates();
+});
+
+ipcMain.on('download-update', () => {
+  autoUpdater.downloadUpdate();
+});
+
+ipcMain.on('quit-and-install', () => {
+  autoUpdater.quitAndInstall();
+});
+
+// Forward events to renderer
+autoUpdater.on('checking-for-update', () => {
+  settingsWindow.webContents.send('update-status', { status: 'checking' });
+});
+
+autoUpdater.on('update-available', (info) => {
+  settingsWindow.webContents.send('update-status', { status: 'available', info });
+});
+
+autoUpdater.on('update-not-available', (info) => {
+  settingsWindow.webContents.send('update-status', { status: 'not-available', info });
+});
+
+autoUpdater.on('error', (err) => {
+  settingsWindow.webContents.send('update-status', { status: 'error', error: err.toString() });
+});
+
+autoUpdater.on('download-progress', (progressObj) => {
+  settingsWindow.webContents.send('update-status', { status: 'downloading', progress: progressObj });
+});
+
+autoUpdater.on('update-downloaded', (info) => {
+  settingsWindow.webContents.send('update-status', { status: 'downloaded', info });
+});
+
+
+app.whenReady().then(() => {
+  try {
+    store = new Store({
+      defaults: {
+        source: 'D:\\projects\\experimental-projects\\nexus-prime',
+        destination: 'D:\\projects\\experimental-projects\\nexus-prime-backups',
+        excludes: 'node_modules, .git, temp',
+        interval: 60, // minutes
+        maxBackups: 10,
+        smartStreak: 3,
+        autoStart: false
+      }
+    });
+
+    // Ensure defaults are active if current settings are empty (e.g. from previous run)
+    if (!store.get('source')) {
+      store.set('source', 'D:\\projects\\experimental-projects\\nexus-prime');
+    }
+    if (!store.get('destination')) {
+      store.set('destination', 'D:\\projects\\experimental-projects\\nexus-prime-backups');
+    }
+
+    createSettingsWindow();
+    createTray();
+
+    if (store.get('autoStart')) {
+      startBackupLoop();
+    }
+  } catch (error) {
+    dialog.showErrorBox('Startup Error', error.stack);
+    app.quit();
   }
 });
 

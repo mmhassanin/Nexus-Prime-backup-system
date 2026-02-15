@@ -1,52 +1,58 @@
-# Nexus Smart Backup System
+# Nexus Smart Backup System (Universal Edition)
 
-Nexus Smart Backup System is a robust, standalone desktop application designed for seamless background backups. Built with Electron and Node.js, it operates silently from the system tray, ensuring your data is secure without interrupting your workflow.
+**The Ultimate Standalone Backup Tool for Any Project**
 
-## 🚀 Core Features
+Nexus Smart Backup System is a powerful, production-ready desktop application designed to keep your critical data safe. Originally built for Nexus Prime, it has been re-engineered as a universal tool that anyone can use to backup *any* folder to *any* destination with professional-grade reliability.
 
-- **Tray-Only Architecture**: Runs unobtrusively in the background with a system tray icon for quick access and control.
-- **Smart Size Checking**: Intelligently monitors file sizes to optimize backup storage and performance.
-- **Auto-Rotation**: Automatically manages backup versions, rotating out old backups to save space.
-- **Native Notifications**: Keeps you informed of backup status and critical events via native OS notifications.
-- **Hidden Settings Dashboard**: Access advanced configuration options through a secure, hidden dashboard.
+## 🌟 Key Features
 
-## 🛠️ Tech Stack
+### 🖥️ Modern Tabbed Interface
+- **Dashboard**: Real-time system status, live logs, and quick controls (Start/Stop/Force Backup).
+- **Configuration**: sleek, dark-mode settings panel with dynamic folder selection.
 
-- **[Electron](https://www.electronjs.org/)**: Framework for building cross-platform desktop apps with web technologies.
-- **[Node.js](https://nodejs.org/)**: JavaScript runtime built on Chrome's V8 JavaScript engine.
-- **[fs-extra](https://github.com/jprichardson/node-fs-extra)**: Extended file system methods for robust file operations.
-- **[electron-builder](https://www.electron.build/)**: Complete solution to package and build a ready for distribution Electron app.
+### 🛡️ Deep Exclusion System (Tag/Chip UI)
+- **Smart Filtering**: Easily exclude clutter. Just type a folder name (e.g., `node_modules`, `.git`, `dist`) and press **Enter** to create a tag.
+- **Deep Logic**: The system intelligently scans and ignores *any* folder or file matching your tags, no matter how deep it is nested in your project.
 
-## 📦 Setup & Installation
+### ⚙️ Powerful Automation
+- **Auto-Interval**: Set your desired backup frequency (in minutes).
+- **Smart Streak**: Detects if files haven't changed after X backups and automatically pauses to save resources.
+- **Auto-Rotation**: Keeps your backup folder clean by retaining only the last N backups (configurable).
+- **System Tray Integration**: Runs silently in the background with a native tray icon.
 
-To set up the project locally, follow these steps:
+## 🚀 Getting Started
 
-1.  **Clone the repository** (if applicable) or navigate to the project directory.
-2.  **Install dependencies**:
-    ```bash
-    npm install
-    ```
+1.  **Download/Build** the application.
+2.  **Launch** `Nexus Smart Backup.exe`.
+3.  **Go to Configuration**:
+    -   **Source**: Click "Browse" to select the folder you want to protect.
+    -   **Destination**: Click "Browse" to select where backups should go.
+    -   **Exclusions**: Add tags for folders you want to skip (e.g., `node_modules`).
+    -   **Auto-Start**: Check if you want it to run on Windows startup.
+4.  **Save Settings** and click **Start Loop** on the Dashboard.
 
-## 🏗️ Build Instructions
+## 🛠️ Build from Source
 
-To build the application for production, you can use the provided build script or npm command.
+Requirements: Node.js & NPM.
 
-### Using the Batch Script (Recommended for Windows)
+```bash
+# 1. Install dependencies
+npm install
 
-We have created a dedicated build tool for Windows:
+# 2. Run in development mode
+npm start
 
-```cmd
+# 3. Build standalone .exe
+npm run build
+# OR use the included batch script for a clean build:
 Build-Backup.bat
 ```
 
-### Using NPM
-
-Alternatively, you can run the standard build command:
-
-```bash
-npm run build
-```
+## 📦 Tech Stack
+- **Electron**: Cross-platform desktop framework.
+- **Node.js**: Powerful backend runtime.
+- **fs-extra**: Reliable file system operations.
+- **Electron-Store**: Persistent configuration storage.
 
 ---
-
-*Private Repository - Nexus Smart Backup System*
+*Universal Standalone Backup Tool - crafted with ❤️*
